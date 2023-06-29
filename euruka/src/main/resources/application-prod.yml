@@ -1,6 +1,6 @@
 server:
   port: 8052
-  host: 172.17.0.5
+  host: 172.17.0.2
 
 spring:
   application:
@@ -12,7 +12,7 @@ eureka:
     register-with-eureka: false
     fetch-registry: false
     service-url:
-      defaultZone: http://172.17.0.5:8052/eureka
+      defaultZone: http://172.17.0.2:8052/eureka
 
 logging:
   level:
