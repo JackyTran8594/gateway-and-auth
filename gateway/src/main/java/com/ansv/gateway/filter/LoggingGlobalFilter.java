@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 
 
 @Component
-public class LoggingGlobalFilter implements GlobalFilter, Ordered {
+public class LoggingGlobalFilter implements GlobalFilter {
 
     final Logger LOGGER = LoggerFactory.getLogger(LoggingGlobalFilter.class);
 
@@ -44,8 +44,8 @@ public class LoggingGlobalFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange);
     }
 
-    @Override
-    public int getOrder() {
-        return -1;
-    }
+    // @Override
+    // public int getOrder() {
+    //     return -1;
+    // }
 }

@@ -30,6 +30,9 @@ public class RabbitMqReceiver implements RabbitListenerConfigurer {
         rabbitMqSender.sender(dto);
     }
 
+
+    
+
 //    @RabbitListener(queues = "${spring.rabbitmq.queue-received}")
 //    public UserDTO receivedMessage(String username) {
 //        logger.info("Username Received is.. " + username);

@@ -9,6 +9,8 @@ import com.ansv.gateway.service.rabbitmq.RabbitMqReceiver;
 import com.ansv.gateway.service.rabbitmq.RabbitMqSender;
 import com.ansv.gateway.util.DataUtils;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +28,6 @@ import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 
-
 @Service
 @Slf4j
 public class UserDetailsServiceImpl implements CustomUserDetailService {
@@ -43,8 +44,11 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
     @Autowired
     private RabbitMqSender rabbitMqSender;
 
+    // @Autowired
+    // private RabbitMqReceiver rabbitMqReceiver;
+
     @Autowired
-    private RabbitMqReceiver rabbitMqReceiver;
+    private AmqpTemplate rabbitMqTemplate;
 
     private RestTemplate restTemplate;
 
@@ -60,7 +64,7 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
 
             newUser = new User(user.getUsername(), user.getEmail(), buildSimpleGrantedAuthorities("user"));
         } else {
-            //            creating if user isn't exist in db
+            // creating if user isn't exist in db
             log.warn("User not found with username ----> create in db", username);
             user = new UserEntity();
             user.setUsername(username);
@@ -76,11 +80,12 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
         return newUser;
     }
 
-    private static List<SimpleGrantedAuthority> buildSimpleGrantedAuthorities(final List<String> roles, List<String> roleList) {
+    private static List<SimpleGrantedAuthority> buildSimpleGrantedAuthorities(final List<String> roles,
+            List<String> roleList) {
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-//         for (Role role : roles) {
-//             authorities.add(new SimpleGrantedAuthority(role.getName()));
-//         }
+        // for (Role role : roles) {
+        // authorities.add(new SimpleGrantedAuthority(role.getName()));
+        // }
         if (DataUtils.notNullOrEmpty(roleList)) {
             for (String role : roleList) {
                 authorities.add(new SimpleGrantedAuthority(role));
@@ -99,7 +104,6 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
 
     }
 
-
     @Override
     public UserDetails loadUser(String username, String displayName, String email) {
         UserEntity user = userRepository.findByUsername(username);
@@ -111,7 +115,7 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
 
             newUser = new User(user.getUsername(), user.getEmail(), buildSimpleGrantedAuthorities("user"));
         } else {
-            //            creating if user isn't exist in db
+            // creating if user isn't exist in db
             log.warn("User not found with username ----> create in db", username);
             user = new UserEntity();
             user.setUsername(username);
@@ -121,7 +125,7 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
             userRepository.save(user);
             UserDTO userDTO = new UserDTO();
             userDTO = UserMapper.INSTANCE.modelToDTO(user);
-//            rabbitMqSender.sender(userDTO);
+            // rabbitMqSender.sender(userDTO);
             newUser = new User(username, email, buildSimpleGrantedAuthorities("user"));
             return newUser;
         }
@@ -138,21 +142,23 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
     @Override
     public UserDetails loadUserDetails(String username, String displayName, String email) {
         UserDTO item = new UserDTO().builder().username(username).fullName(displayName).email(email).build();
+        UserDTO userInfo = new UserDTO();
         item.setTypeRequest(TypeRequestEnum.VIEW.getName());
-        UserDetails userDetails = loadUserByUsernameFromHumanResource(item);
-        if(!DataUtils.isNullOrEmpty(userDetails)) {
-            return userDetails;
+        userInfo = getUserFromHumanService(item);
+        if (!DataUtils.isNullOrEmpty(userInfo)) {
+            User user = new User(item.getUsername(), item.getEmail(), buildSimpleGrantedAuthorities("user"));
+            return user;
         } else {
             item.setTypeRequest(TypeRequestEnum.INSERT.getName());
             rabbitMqSender.senderUserObject(item);
             rabbitMqSender.sender(item);
-            UserDTO userDTO = rabbitMqReceiver.userDTO;
+            // UserDTO userDTO = rabbitMqReceiver.userDTO;
             // clear user để nhận lần tiếp theo
-            rabbitMqReceiver.userDTO = new UserDTO();
-            if (DataUtils.notNull(userDTO)) {
-                User user = new User(username, email, buildSimpleGrantedAuthorities("user"));
-                return user;
-            }
+            // rabbitMqReceiver.userDTO = new UserDTO();
+            // if (DataUtils.notNull(userDTO)) {
+            //     User user = new User(username, email, buildSimpleGrantedAuthorities("user"));
+            //     return user;
+            // }
         }
         return null;
 
@@ -161,10 +167,10 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
     @Override
     public UserDetails loadUserByUsernameForInmemoryAuth(String username, String password) {
         if (DataUtils.notNullOrEmpty(username) && DataUtils.notNullOrEmpty(password)) {
-            if(username.equals(usernameAdmin) && password.equals(passwordAdmin)) {
+            if (username.equals(usernameAdmin) && password.equals(passwordAdmin)) {
                 UserDTO item = new UserDTO().builder().username(username).fullName(username).email(username).build();
                 rabbitMqSender.senderUserObject(item);
-//                rabbitMqSender.sender(item);
+                // rabbitMqSender.sender(item);
                 User user = new User(username, username, buildSimpleGrantedAuthorities("ADMIN"));
                 return user;
             }
@@ -175,15 +181,31 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
     // find user
     @Override
     public UserDetails loadUserByUsernameFromHumanResource(UserDTO item) {
-//        UserDTO item = new UserDTO().builder().username(username).fullName(username).email(username).build();
+        // UserDTO item = new
+        // UserDTO().builder().username(username).fullName(username).email(username).build();
         rabbitMqSender.senderUsernameToHuman(item);
-        UserDTO userDTO = rabbitMqReceiver.userDTO;
-        //clear user
-        rabbitMqReceiver.userDTO = new UserDTO();
-        if (DataUtils.notNull(userDTO) && !DataUtils.isNullOrEmpty(userDTO.getUsername())) {
-            User user = new User(item.getUsername(), userDTO.getEmail(), buildSimpleGrantedAuthorities("user"));
-            return user;
-        }
+        // UserDTO userDTO = rabbitMqReceiver.userDTO;
+
+        // clear user
+        // rabbitMqReceiver.userDTO = new UserDTO();
+        // if (DataUtils.notNull(userDTO) && !DataUtils.isNullOrEmpty(userDTO.getUsername())) {
+        //     User user = new User(item.getUsername(), userDTO.getEmail(), buildSimpleGrantedAuthorities("user"));
+        //     return user;
+        // }
+        return null;
+    }
+
+    @Override
+    public UserDTO getUserFromHumanService(UserDTO user) {
+        // TODO Auto-generated method stub
+        // rabbitMqSender.senderUserObject(user);
+        rabbitMqSender.senderUsernameToHuman(user);
+        // UserDTO userDTO = rabbitMqReceiver.userDTO;
+        // // UserDTO userDTO = rabbitMqSender.sendAndReceiveUser(user);
+
+        // if (DataUtils.notNull(userDTO) && !DataUtils.isNullOrEmpty(userDTO.getUsername())) {
+        //     return userDTO;
+        // }
         return null;
     }
 }

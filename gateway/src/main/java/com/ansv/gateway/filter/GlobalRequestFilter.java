@@ -32,7 +32,7 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class GlobalRequestFilter implements GlobalFilter, Ordered {
+public class GlobalRequestFilter implements GlobalFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsServiceImpl userDetailsServiceImpl;
@@ -136,8 +136,8 @@ public class GlobalRequestFilter implements GlobalFilter, Ordered {
     }
 
 
-    @Override
-    public int getOrder() {
-        return -2;
-    }
+    // @Override
+    // public int getOrder() {
+    //     return 0;
+    // }
 }

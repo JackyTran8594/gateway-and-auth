@@ -6,7 +6,7 @@ COPY src /app/src
 #COPY ./src /app/src
 WORKDIR /app/
 #RUN mvn clean test
-RUN mvn clean install -P dev
+RUN mvn clean install -P staging
 
 
 ### STAGE 2: DEPLOY APP

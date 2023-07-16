@@ -1,6 +1,8 @@
 package com.ansv.gateway.dto.response;
 
 
+import java.io.Serializable;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UserDTO {
+public class UserDTO implements Serializable {
     private Long id;
 
     private String username;
@@ -36,5 +38,7 @@ public class UserDTO {
     private String password;
 
     private String typeRequest;
+
+    
 
 }

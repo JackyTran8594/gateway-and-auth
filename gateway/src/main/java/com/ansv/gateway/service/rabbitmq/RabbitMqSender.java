@@ -1,24 +1,21 @@
 package com.ansv.gateway.service.rabbitmq;
 
 import com.ansv.gateway.dto.response.UserDTO;
-import com.ansv.gateway.util.DataUtils;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
-import org.springframework.amqp.core.Queue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.UUID;
-
 
 @Service
 public class RabbitMqSender {
@@ -28,8 +25,8 @@ public class RabbitMqSender {
     @Autowired
     private AmqpTemplate rabbitTemplate;
 
-//    @Autowired
-//    private RabbitMqReceiver rabbitMqReceiver;
+    // @Autowired
+    // private RabbitMqReceiver rabbitMqReceiver;
 
     @Value("${spring.rabbitmq.exchange:#{null}}")
     private String exchange;
@@ -42,6 +39,9 @@ public class RabbitMqSender {
     @Value("${spring.rabbitmq.routingkey-human:#{null}}")
     private String routingkeyHuman;
 
+    // to human
+    @Value("${spring.rabbitmq.queue-human-received:#{null}}")
+    private String queueHumanReceived;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -58,16 +58,45 @@ public class RabbitMqSender {
 
     // sender to human service for check username
     public void senderUsernameToHuman(UserDTO user) {
-        rabbitTemplate.convertAndSend(exchange, routingkeyHuman, user);
+        UUID correlationId = UUID.randomUUID();
+
+        // MessagePostProcessor messagePostProcessor = message -> {
+        //     MessageProperties messageProperties = message.getMessageProperties();
+        //     messageProperties.setReplyTo(replyQue.getName());
+        //     messageProperties.setCorrelationId(correlationId.toString());
+        // };
+
+        MessagePostProcessor messagePostProcessor = new MessagePostProcessor() {
+
+            @Override
+            public Message postProcessMessage(Message message) throws AmqpException {
+                // TODO Auto-generated method stub
+                MessageProperties messageProperties =  message.getMessageProperties();
+                messageProperties.setReplyTo(queueHumanReceived);
+                messageProperties.setCorrelationId(correlationId.toString());
+                return message;
+            }
+            
+        };
+
+       Object obj = rabbitTemplate.convertSendAndReceive(exchange, routingkeyHuman, user, messagePostProcessor);
+
+    }
+    // end
+
+    // send and receive
+    public void sendAndReceiveUser(UserDTO user) {
+        rabbitTemplate.convertAndSend(exchange, routingkey, user);
+        // UserDTO userDTO = (UserDTO) userObject;
+        // return userDTO;
     }
     // end
 
     // sender to human and task service for add user
     public void senderUserObject(UserDTO item) {
         rabbitTemplate.convertAndSend(exchange, routingkeyHuman, item);
-//        rabbitTemplate.convertAndSend(exchange, routingkey, item);
+        // rabbitTemplate.convertAndSend(exchange, routingkey, item);
 
     }
-
 
 }

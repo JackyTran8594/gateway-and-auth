@@ -22,4 +22,5 @@ public interface CustomUserDetailService extends UserDetailsService {
 
     UserDetails loadUserByUsernameFromHumanResource(UserDTO user) ;
 
+    UserDTO getUserFromHumanService(UserDTO username);
 }

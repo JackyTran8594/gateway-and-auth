@@ -56,17 +56,33 @@ spring:
             - Method=GET,POST,PUT,DELETE,OPTIONS,HEAD
       httpserver:
         wiretap: true
-
+  
   ldap:
+    embedded:
+      ldif: classpath:test-server.ldif
+      base-dn: dc=springframework,dc=org
+      port: 8389
+      validation:
+        enabled: true
     server:
-      base: CN=Users,DC=ansv,DC=vn
+      base: dc=springframework,dc=org
     authen:
-      url: ldap://172.24.104.6:389
-      managerDn: CN=Admin,CN=Users,DC=ansv,DC=vn
+      url: ldap://localhost:8389
+      managerDn: uid=admin,ou=people,dc=springframework,dc=org
       managerPassword: 123456
-      filter: userPrincipalName
-      #      password: userPassword
-      dn-partterns: CN=Users,DC=ansv,DC=vn
+      filter: uid
+      password: userPassword
+
+  # ldap:
+  #   server:
+  #     base: CN=Users,DC=ansv,DC=vn
+  #   authen:
+  #     url: ldap://172.24.104.6:389
+  #     managerDn: CN=Admin,CN=Users,DC=ansv,DC=vn
+  #     managerPassword: 123456
+  #     filter: userPrincipalName
+  #     #      password: userPassword
+  #     dn-partterns: CN=Users,DC=ansv,DC=vn
 
 #  datasource:
 #    url: jdbc:postgresql://host.docker.internal:5432/Authorization
@@ -86,7 +102,8 @@ spring:
   # redis configuration for caching
   cache:
     type: redis
-    host: 172.17.0.2
+    # host: 172.17.0.2
+    host: host.docker.internal
     port: 6379
 #    password: password
     ssl: false
