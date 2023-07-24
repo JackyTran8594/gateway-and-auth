@@ -2,7 +2,6 @@ package com.ansv.gateway.service;
 
 
 import com.ansv.gateway.dto.response.UserDTO;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
@@ -20,7 +19,5 @@ public interface CustomUserDetailService extends UserDetailsService {
 
     UserDetails loadUserByUsernameForInmemoryAuth(String username, String password);
 
-    UserDetails loadUserByUsernameFromHumanResource(UserDTO user) ;
 
-    UserDTO getUserFromHumanService(UserDTO username);
 }

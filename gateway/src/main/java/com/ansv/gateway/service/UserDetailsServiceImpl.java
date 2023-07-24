@@ -5,26 +5,23 @@ import com.ansv.gateway.dto.mapper.UserMapper;
 import com.ansv.gateway.dto.response.UserDTO;
 import com.ansv.gateway.model.UserEntity;
 import com.ansv.gateway.repository.UserEntityRepository;
-import com.ansv.gateway.service.rabbitmq.RabbitMqReceiver;
 import com.ansv.gateway.service.rabbitmq.RabbitMqSender;
 import com.ansv.gateway.util.DataUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,13 +41,13 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
     @Autowired
     private RabbitMqSender rabbitMqSender;
 
-    // @Autowired
-    // private RabbitMqReceiver rabbitMqReceiver;
+    private ObjectMapper objectMapper;
 
-    @Autowired
-    private AmqpTemplate rabbitMqTemplate;
-
-    private RestTemplate restTemplate;
+    public UserDetailsServiceImpl() {
+        objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
+    }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -143,22 +140,20 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
     public UserDetails loadUserDetails(String username, String displayName, String email) {
         UserDTO item = new UserDTO().builder().username(username).fullName(displayName).email(email).build();
         UserDTO userInfo = new UserDTO();
-        item.setTypeRequest(TypeRequestEnum.VIEW.getName());
-        userInfo = getUserFromHumanService(item);
+        // get user existed
+        userInfo = getUserFromHumanService(item, TypeRequestEnum.VIEW.getName());
         if (!DataUtils.isNullOrEmpty(userInfo)) {
-            User user = new User(item.getUsername(), item.getEmail(), buildSimpleGrantedAuthorities("user"));
+            User user = new User(userInfo.getUsername(), userInfo.getEmail(), buildSimpleGrantedAuthorities("user"));
             return user;
         } else {
-            item.setTypeRequest(TypeRequestEnum.INSERT.getName());
-            rabbitMqSender.senderUserObject(item);
-            rabbitMqSender.sender(item);
-            // UserDTO userDTO = rabbitMqReceiver.userDTO;
-            // clear user để nhận lần tiếp theo
-            // rabbitMqReceiver.userDTO = new UserDTO();
-            // if (DataUtils.notNull(userDTO)) {
-            //     User user = new User(username, email, buildSimpleGrantedAuthorities("user"));
-            //     return user;
-            // }
+            // add user 
+            Object res = rabbitMqSender.senderUserObjectToHuman(item, TypeRequestEnum.INSERT.getName());
+            if (!DataUtils.isNullOrEmpty(res)) {
+                rabbitMqSender.sender(item);
+                userInfo = (UserDTO) res;
+                User user = new User(userInfo.getUsername(), userInfo.getEmail(), buildSimpleGrantedAuthorities("user"));
+                return user;
+            }
         }
         return null;
 
@@ -169,43 +164,33 @@ public class UserDetailsServiceImpl implements CustomUserDetailService {
         if (DataUtils.notNullOrEmpty(username) && DataUtils.notNullOrEmpty(password)) {
             if (username.equals(usernameAdmin) && password.equals(passwordAdmin)) {
                 UserDTO item = new UserDTO().builder().username(username).fullName(username).email(username).build();
-                rabbitMqSender.senderUserObject(item);
-                // rabbitMqSender.sender(item);
-                User user = new User(username, username, buildSimpleGrantedAuthorities("ADMIN"));
-                return user;
+                Object res = rabbitMqSender.senderUserObjectToHuman(item, TypeRequestEnum.INSERT.getName());
+                if (!DataUtils.isNullOrEmpty(res)) {
+                    rabbitMqSender.sender(item);
+                    UserDTO userInfo = (UserDTO) res;
+                    User user = new User(userInfo.getUsername(), userInfo.getEmail(), buildSimpleGrantedAuthorities("user"));
+                    return user;
+                }
             }
         }
         return null;
     }
 
-    // find user
-    @Override
-    public UserDetails loadUserByUsernameFromHumanResource(UserDTO item) {
-        // UserDTO item = new
-        // UserDTO().builder().username(username).fullName(username).email(username).build();
-        rabbitMqSender.senderUsernameToHuman(item);
-        // UserDTO userDTO = rabbitMqReceiver.userDTO;
+    public UserDTO getUserFromHumanService(UserDTO user, String type) {
+        // // TODO Auto-generated method stub
+        try {
+            Object obj = rabbitMqSender.senderUserToHumanService(user.getUsername(), type);
+            log.info("------------" + obj.toString());
+            if (!DataUtils.isNullOrEmpty(obj)) {
+                UserDTO userDTO = objectMapper.readValue(obj.toString(), UserDTO.class);
+                return userDTO;
+            }
+            return null;
+        } catch (Exception e) {
+            // TODO: handle exception
+            log.error(e.getMessage());
+            return null;
+        }
 
-        // clear user
-        // rabbitMqReceiver.userDTO = new UserDTO();
-        // if (DataUtils.notNull(userDTO) && !DataUtils.isNullOrEmpty(userDTO.getUsername())) {
-        //     User user = new User(item.getUsername(), userDTO.getEmail(), buildSimpleGrantedAuthorities("user"));
-        //     return user;
-        // }
-        return null;
-    }
-
-    @Override
-    public UserDTO getUserFromHumanService(UserDTO user) {
-        // TODO Auto-generated method stub
-        // rabbitMqSender.senderUserObject(user);
-        rabbitMqSender.senderUsernameToHuman(user);
-        // UserDTO userDTO = rabbitMqReceiver.userDTO;
-        // // UserDTO userDTO = rabbitMqSender.sendAndReceiveUser(user);
-
-        // if (DataUtils.notNull(userDTO) && !DataUtils.isNullOrEmpty(userDTO.getUsername())) {
-        //     return userDTO;
-        // }
-        return null;
     }
 }

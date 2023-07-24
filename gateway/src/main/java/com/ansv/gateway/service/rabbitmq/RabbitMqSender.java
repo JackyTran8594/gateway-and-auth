@@ -1,6 +1,7 @@
 package com.ansv.gateway.service.rabbitmq;
 
 import com.ansv.gateway.dto.response.UserDTO;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,15 +26,12 @@ public class RabbitMqSender {
     @Autowired
     private AmqpTemplate rabbitTemplate;
 
-    // @Autowired
-    // private RabbitMqReceiver rabbitMqReceiver;
-
     @Value("${spring.rabbitmq.exchange:#{null}}")
     private String exchange;
 
     // to task
-    @Value("${spring.rabbitmq.routingkey:#{null}}")
-    private String routingkey;
+    @Value("${spring.rabbitmq.routingkey-task:#{null}}")
+    private String routingkeyTask;
 
     // to human
     @Value("${spring.rabbitmq.routingkey-human:#{null}}")
@@ -52,50 +50,85 @@ public class RabbitMqSender {
 
     // sender to task service
     public void sender(UserDTO user) {
-        rabbitTemplate.convertAndSend(exchange, routingkey, user);
+        try {
+            rabbitTemplate.convertAndSend(exchange, routingkeyTask, objectMapper.writeValueAsString(user));
+        } catch (JsonProcessingException | AmqpException e) {
+            // TODO Auto-generated catch block
+            logger.info(e.getMessage());
+        }
     }
     // end
 
     // sender to human service for check username
     public void senderUsernameToHuman(UserDTO user) {
         UUID correlationId = UUID.randomUUID();
-
-        // MessagePostProcessor messagePostProcessor = message -> {
-        //     MessageProperties messageProperties = message.getMessageProperties();
-        //     messageProperties.setReplyTo(replyQue.getName());
-        //     messageProperties.setCorrelationId(correlationId.toString());
-        // };
-
         MessagePostProcessor messagePostProcessor = new MessagePostProcessor() {
 
             @Override
             public Message postProcessMessage(Message message) throws AmqpException {
                 // TODO Auto-generated method stub
-                MessageProperties messageProperties =  message.getMessageProperties();
+                MessageProperties messageProperties = message.getMessageProperties();
                 messageProperties.setReplyTo(queueHumanReceived);
                 messageProperties.setCorrelationId(correlationId.toString());
                 return message;
             }
-            
+
         };
 
-       Object obj = rabbitTemplate.convertSendAndReceive(exchange, routingkeyHuman, user, messagePostProcessor);
+        Object obj = rabbitTemplate.convertSendAndReceive(exchange, routingkeyHuman, user, messagePostProcessor);
 
     }
     // end
 
-    // send and receive
-    public void sendAndReceiveUser(UserDTO user) {
-        rabbitTemplate.convertAndSend(exchange, routingkey, user);
-        // UserDTO userDTO = (UserDTO) userObject;
-        // return userDTO;
+    // sender userObject to task service for add user
+    public void senderUserToTask(UserDTO item, String type) throws JsonProcessingException, AmqpException {
+        rabbitTemplate.convertAndSend(exchange, routingkeyTask, objectMapper.writeValueAsString(item));
     }
-    // end
 
-    // sender to human and task service for add user
-    public void senderUserObject(UserDTO item) {
-        rabbitTemplate.convertAndSend(exchange, routingkeyHuman, item);
-        // rabbitTemplate.convertAndSend(exchange, routingkey, item);
+    public Object senderTest(String username) {
+        Object response = rabbitTemplate.convertSendAndReceive(exchange, routingkeyHuman, username);
+        logger.info("------------RESPONSE FROM HUMAN:" + response.toString());
+        return response;
+    }
+
+    // send username to Humane service
+    public Object senderUserToHumanService(String username, String type) {
+        Object response = rabbitTemplate.convertSendAndReceive(exchange, routingkeyHuman, username,
+                new MessagePostProcessor() {
+
+                    @Override
+                    public Message postProcessMessage(Message message) throws AmqpException {
+                        // TODO Auto-generated method stub
+                        message.getMessageProperties().setHeader("typeRequest", type);
+                        return message;
+                    }
+
+                });
+        logger.info("---------- RESPONSE FROM HUMAN:" + response.toString());
+        return response;
+    }
+
+    // send Object to Humane service
+    public Object senderUserObjectToHuman(UserDTO item, String type) {
+        try {
+            Object response = rabbitTemplate.convertSendAndReceive(exchange, routingkeyHuman,
+                    objectMapper.writeValueAsString(item), new MessagePostProcessor() {
+
+                        @Override
+                        public Message postProcessMessage(Message message) throws AmqpException {
+                            // TODO Auto-generated method stub
+                            message.getMessageProperties().setHeader("typeRequest", type);
+                            return message;
+                        }
+
+                    });
+            logger.info("---------- RESPONSE FROM HUMAN:" + response.toString());
+            return response;
+        } catch (Exception e) {
+            // TODO: handle exception
+            logger.error(e.getMessage());
+            return null;
+        }
 
     }
 

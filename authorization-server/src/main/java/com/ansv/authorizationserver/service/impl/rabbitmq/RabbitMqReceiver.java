@@ -4,6 +4,7 @@ import com.ansv.authorizationserver.dto.response.UserDTO;
 import com.ansv.authorizationserver.service.impl.CustomUserDetailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -23,22 +24,20 @@ public class RabbitMqReceiver implements RabbitListenerConfigurer {
     @Autowired
     private RabbitMqSender rabbitMqSender;
 
-    @RabbitListener(queues = "${spring.rabbitmq.queue-received}")
+    @RabbitListener(queues = "${spring.rabbitmq.queue-received}" )
     public void receivedMessage(String username) {
         logger.info("Username Received is.. " + username);
-        UserDTO dto = customService.findByUsername(username);
-        rabbitMqSender.sender(dto);
+        // UserDTO dto = customService.findByUsername(username);
+        // rabbitMqSender.sender(dto);
     }
 
+     @RabbitListener(queues = "${spring.rabbitmq.queue-human-received}" )
+    public void receivedMessageFromHuman(String jsonObject, Message message) throws Exception {
+        logger.info("Username Received is.. " + jsonObject);
+        // UserDTO dto = customService.findByUsername(username);
+        // rabbitMqSender.sender(dto);
+    }
 
-    
-
-//    @RabbitListener(queues = "${spring.rabbitmq.queue-received}")
-//    public UserDTO receivedMessage(String username) {
-//        logger.info("Username Received is.. " + username);
-//        UserDTO dto = customService.findByUsername(username);
-//        return dto;
-//    }
 
     @Override
     public void configureRabbitListeners(RabbitListenerEndpointRegistrar rabbitListenerEndpointRegistrar) {

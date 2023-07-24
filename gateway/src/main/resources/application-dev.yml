@@ -116,28 +116,13 @@ spring:
     password: guest
     virtualHost: /
     exchange: request.events
-    # routingkey: detail.user.req
-    # queue: detail.user.task-management.req.queue
+    routingkey-task: task.gateway.req
+    queue-task: task.gateway.req.queue
     routingkey-human: user.human.req
     queue-human: user.human-resource.req.queue
-    # exchange-received: response.events
-    # routingkey-received: detail.user.res
-    # queue-received: detail.user.task-management.res.queue
     routingkey-human-received: user.human.res
     queue-human-received: user.human-resource.res.queue
-    publisher-confirm-type: correlated
-    publisher-returns: true
-
-#  spring.rabbitmq.publisher-confirm-type=correlated
-# spring.rabbitmq.publisher-returns=true   
-
-#     spring.rabbitmq.exchange=response.events
-# # spring.rabbitmq.exchange=request.events
-# spring.rabbitmq.routingkey=user.human.res
-# spring.rabbitmq.queue=user.human-resource.res.queue
-# spring.rabbitmq.exchange-received=request.events
-# spring.rabbitmq.routingkey-human=user.human.req
-# spring.rabbitmq.queue-human=user.human-resource.req.queue
+  
 
 
 #redis
