@@ -1,6 +1,6 @@
 server:
   port: 8052
-  host: host.docker.internal
+  host: 172.17.0.4
 
 spring:
   application:
@@ -12,7 +12,7 @@ eureka:
     register-with-eureka: false
     fetch-registry: false
     service-url:
-      defaultZone: http://host.docker.internal:8052/eureka
+      defaultZone: http://172.17.0.4:8052/eureka
 
 logging:
   level:
