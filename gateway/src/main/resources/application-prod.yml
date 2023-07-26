@@ -5,11 +5,11 @@ server:
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://172.17.0.7:8052/eureka/
+      defaultZone: http://172.17.0.4:8052/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:
-    hostname: 172.17.0.7
+    hostname: 172.17.0.4
 
 
 spring:
@@ -39,20 +39,20 @@ spring:
             allowedHeaders: "*"
       routes:
         - id: app1
-          uri: http://host.docker.internal:8091
+          uri: http://172.17.0.5:8091
           predicates:
             - Path=/app1/**
         - id: app2
-          uri: http://host.docker.internal:8090
+          uri: http://172.17.0.5:8090
           predicates:
             - Path=/app2/**
         - id: task-management
-          uri: http://host.docker.internal:8098
+          uri: http://172.17.0.5:8098
           predicates:
             - Path=/taskManagement/**
             - Method=GET,POST,PUT,DELETE,OPTIONS,HEAD
         - id: human-resource
-          uri: http://host.docker.internal:8099
+          uri: http://172.17.0.6:8099
           predicates:
             - Path=/humanResource/**
             - Method=GET,POST,PUT,DELETE,OPTIONS,HEAD
@@ -87,12 +87,12 @@ spring:
   # redis configuration for caching
   cache:
     type: redis
-    host: 172.17.0.6
+    host: 172.17.0.3
     port: 6379
 #    password: password
     ssl: false
   rabbitmq:
-    host: 172.17.0.5
+    host: 172.17.0.2
     port: 5672
     username: guest
     password: guest
