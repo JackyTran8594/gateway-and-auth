@@ -1,6 +1,7 @@
 package com.ansv.gateway.filter;
 
 import com.ansv.gateway.config.RouterValidator;
+import com.ansv.gateway.constants.TypeRequestEnum;
 import com.ansv.gateway.dto.redis.AccessToken;
 import com.ansv.gateway.dto.redis.RefreshToken;
 import com.ansv.gateway.dto.response.UserDTO;
@@ -94,7 +95,7 @@ public class GlobalRequestFilter implements GlobalFilter {
             if (username != null && (authentication == null || "anonymousUser".equals(authentication.getPrincipal()))) {
                 UserDTO userDTO = new UserDTO();
                 userDTO.setUsername(username);
-                UserDetails userDetails = this.userDetailsServiceImpl.loadUserByUsernameFromHumanResource(userDTO);
+                UserDetails userDetails = this.userDetailsServiceImpl.loadUserDetails(userDTO.getUsername(), userDTO.getUsername(), userDTO.getUsername());
                 // if token is valid configure Spring Security to manually set authentication
                 if (jwtTokenUtil.validateToken(jwtToken, userDetails)) {
                     UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
